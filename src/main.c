@@ -6,6 +6,7 @@
 
 #include "MSE_OS_Core.h"
 
+
 /*==================[macros and definitions]=================================*/
 
 #define MILISEC		1000
@@ -42,7 +43,6 @@ static void initHardware(void)  {
 void tarea1(void)  {
 	uint16_t h = 0;
 	uint16_t i = 0;
-
 	while (1) {
 		h++;
 		i++;
@@ -69,20 +69,19 @@ void tarea3(void)  {
 		m++;
 	}
 }
-
 /*============================================================================*/
 
 int main(void)  {
 
 	initHardware();
 
+	os_Init();
+
 	os_InitTarea(tarea1, &stack1, &sp_tarea1);
 	os_InitTarea(tarea2, &stack2, &sp_tarea2);
 	os_InitTarea(tarea3, &stack3, &sp_tarea3);
-
-
+	
 	while (1) {
-		__WFI();
 	}
 }
 
