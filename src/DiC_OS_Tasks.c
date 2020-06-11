@@ -1,10 +1,13 @@
 #include "DiC_OS_Tasks.h"
+#include "DiC_OS_API.h"
+
 //Author: Jacobo Salvador
 //Defino las 8 tareas del sistema operativ, por requerimientos las prioridades van de 0 a 3
 void Task_0(void){
     uint32_t a = 0;
     while(1){
         a++;
+        os_Delay(2);
     }
 }
 
@@ -12,6 +15,7 @@ void Task_1(void){
     uint32_t b = 0;
     while(1){
         b++;
+        os_Delay(5);
     }
 }
 
@@ -19,6 +23,7 @@ void Task_2(void){
     uint32_t c = 0;
     while(1){
         c++;
+//        os_Delay(20);
     }
 }
 

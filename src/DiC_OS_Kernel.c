@@ -22,9 +22,16 @@
 #include "DiC_OS_Kernel.h"
 
 /*==================[definicion de variables globales]=================================*/
-
+static priorOS_t prior;
 static controlOS_t controlOS;
 static taskStructure_t taskIdleStructure;
+
+
+static void triggerPendSV(void);
+
+void __attribute__((weak)) tickHook(void)  {
+	__asm volatile( "nop" );
+}
 
 void __attribute__((weak)) taskIdle(void)  {
 	while(1)  {
@@ -65,7 +72,6 @@ void createTask(void *entryPoint, taskStructure_t *task,uint8_t priority)  {
 		task->stack[STACK_SIZE/4 - XPSR] = INIT_XPSR;					//necesario para bit thumb
 		task->stack[STACK_SIZE/4 - PC_REG] = (uint32_t)entryPoint;		//direccion de la tarea (ENTRY_POINT)
 
-
 		/*
 		 * El valor previo de LR (que es EXEC_RETURN en este caso) es necesario dado que
 		 * en esta implementacion, se llama a una funcion desde dentro del handler de PendSV
@@ -73,7 +79,6 @@ void createTask(void *entryPoint, taskStructure_t *task,uint8_t priority)  {
 		 * se termina de ejecutar getContextoSiguiente
 		 */
 		task->stack[STACK_SIZE/4 - LR_PREV_VALUE] = EXEC_RETURN;
-
 		task->stack_pointer = (uint32_t) (task->stack + STACK_SIZE/4 - FULL_STACKING_SIZE);
 
 		/*
@@ -81,7 +86,10 @@ void createTask(void *entryPoint, taskStructure_t *task,uint8_t priority)  {
 		 */
 		task->entry_point = entryPoint;
 		task->id = id;
-		task->taskStatusRRB = TASK_READY;
+		task->taskStatusRRB = TASK_READY;    //Siempre la tarea al crearse se inicia en READY
+
+		task->priority=priority;             //Almaceno la prioridad de la tarea
+     
 
 		/*
 		 * Actualizacion de la estructura de control del OS, guardando el puntero a la estructura de tarea
@@ -124,46 +132,284 @@ void os_Init(void)  {
 	controlOS.currentTask = NULL;
 	controlOS.nextTask = NULL;
 
-
 	/*
 	 * El vector de tareas termina de inicializarse asignando NULL a las posiciones que estan
 	 * luego de la ultima tarea. Esta situacion se da cuando se definen menos de 8 tareas.
 	 * Estrictamente no existe necesidad de esto, solo es por seguridad.
 	 */
-
 	for (uint8_t i = 0; i < MAX_TASK_COUNT; i++)  {
 		if(i>=controlOS.cantidad_Tareas)
 			controlOS.listaTareas[i] = NULL;
 	}
+	/*Inicializo vector del sistema de prioridades con el valor NULL al inicio del OS.
+	Luego, en el siguiente paso cargare los valores almacenados en listaTareas
+	*/
+	for(uint8_t j=0;j<CANT_PRIOR;j++){
+		//controlOS.nBlockTasks[j]=0;              //inicializo el contador de tareas BLOCK en 0
+		controlOS.taskxPrior[j]=0;               //inicializo el contador en 0
+		for(uint8_t i=0;i < MAX_TASK_COUNT; i++) // inicializo el array de punteros a tareas en NULL
+			controlOS.priorScheme[j][i]=NULL;
+	}
+	/*
+	Recorro la lista de tareas que se cargaron. En base a la prioridad se va incrementando el taskxPrior
+	de esa manera conozco la cantidad tareas por prioridad.	
+	*/
+	for(uint8_t i=0;i < MAX_TASK_COUNT; i++)  //  i: tareas
+		if (controlOS.listaTareas[i] != NULL){ // por si el sistema tiene memos de 8 tareas
+			controlOS.priorScheme[((taskStructure_t *) controlOS.listaTareas[i])->priority]     [controlOS.taskxPrior[((taskStructure_t *) controlOS.listaTareas[i])->priority]]=(taskStructure_t *) controlOS.listaTareas[i];
+			controlOS.taskxPrior[((taskStructure_t *) controlOS.listaTareas[i])->priority]=controlOS.taskxPrior[((taskStructure_t *) controlOS.listaTareas[i])->priority]+1;
+		//((taskStructure_t *) controlOS.listaTareas[i])->id // id de la tareas
+		}
 }
 
 
 static void scheduler(void)  {
-	uint8_t indice;		//variable auxiliar para legibilidad
+	uint8_t array_nTaskBlocked[CANT_PRIOR]; //En esta variable puntero almacenos todas
+										    //las tareas blockeadas según su nivel de privilegio.
+	
+	uint8_t i=0;
+	static uint8_t idx=0;             //indica estatico para moverme entre las tareas de una misma prioridad
+	static uint8_t TaskPriortbExec=0; // Esta variable retiene el valor dd la prioriddad de la primera 
+	                                  //tarea a ser ejecutada
+
+	static uint8_t idx_tasks[CANT_PRIOR];	//En este araay tengo los indices a cada tarea que se ejecuta
+	                                        						  
+
+	//uint8_t indice;		//variable auxiliar para legibilidad
 
 	/*
 	 * El scheduler recibe la informacion desde la variable estado de sistema si es el primer ingreso
 	 * desde el ultimo reset. Si esto es asi, determina que la tarea actual es la primer tarea.
 	 */
-	if (controlOS.statusOS == OS_FROM_RESET)  {
-		controlOS.currentTask = (taskStructure_t *) controlOS.listaTareas[0];
-	}
-	else {
+	
+//	if (controlOS.statusOS == OS_FROM_RESET)  {
+//		controlOS.currentTask = (taskStructure_t *) controlOS.listaTareas[0];
+//	}
+	
 
+//	else {
+		
 		/*
 		 * Obtenemos la siguiente tarea en el vector. Si se llega a la ultima tarea disponible
 		 * se hace un reset del contador
 		 */
-		indice = controlOS.currentTask->id+1;
-		if(indice < controlOS.cantidad_Tareas)  {
-			controlOS.nextTask = (taskStructure_t *) controlOS.listaTareas[indice];
+//		indice = controlOS.currentTask->id+1;
+//		if(indice < controlOS.cantidad_Tareas)  {
+//			controlOS.nextTask = (taskStructure_t *) controlOS.listaTareas[indice];
+//		}
+//		else  {
+//			controlOS.nextTask = (taskStructure_t *) controlOS.listaTareas[0];
+//		}
+//	}
+	
+/*----------------------------------------------------------------------------------------*/
+	/*Acá verifico que la cant de tareas no sea cero o que todas las tareas esten
+	bloqueadas en cuyo caso se entra a la función taskIdle
+	*/
+	
+	
+	TaskPriortbExec=getFirstTask();
+
+	//if (controlOS.cantidad_Tareas==0 || controlOS.cantidad_Tareas==totalTasksBlocked())
+	//	controlOS.currentTask = (taskStructure_t *) &taskIdle;
+	if (controlOS.statusOS == OS_FROM_RESET && TaskPriortbExec!=ERROR_PRIOR )  {
+		initIndexTasks(&idx_tasks);   //inicialiaza los indices de las tareas por prioridad
+		controlOS.changeContext=true; //Es mi primera vez en el scheduler aunque no haya tareas deberia cambiar el contexto a idle
+		controlOS.currentTask = (taskStructure_t *) controlOS.priorScheme[TaskPriortbExec][idx];
+	}
+	//else{
+		/*
+		ACA DEBERIA COLOCAR LA TAREA IDLE PORQUE SIGNIFICA QUE EL OS NO TIENE NINGUNA TAREA ACTIVA
+		NI NINGUNA POR EJECUTARSE ES UN ERROR DEL PROGRAMADOR
+		*/
+	//}
+
+	/*
+	Aca hago una doble validación primero verifico si todas las tareas no estan bloqueadas y luego si el 
+	indice es menor que la cantidad de tareas para la misma priorida.
+	*/
+	
+	else {  
+	/*
+	Deberia verificar las tareas BLOCKED y chequear si no llego a 0 los tick para pasar a READY
+    Además debo verificar si la cantidad de tareas bloqueadas es igual a la cantidad 
+	de tareas disponible en cuyo caso llamo a la tarea idle.
+	*/
+
+
+	/*
+	La función nTaskBlocked es la responsable de determinar las cantidad de tareas que estan en
+	estado BLOCKED. Luego hace la diferencia con la cantidad total de tareas cargadas por nivel
+	de prioridad y me da como resultado la cantidad de tareas en estado (RUNNING o READY) por 
+	cada nivel. Antes de determinar que tareas correr ejecuto esta operación
+	*/
+
+		nTaskBlocked(&array_nTaskBlocked);
+
+		/*============================== Tareas nivel prioridad 0 ==================================*/
+		if(array_nTaskBlocked[PRIOR_0]!=0)
+			selectTasks(PRIOR_0, &idx_tasks, &array_nTaskBlocked);
+		
+		/*============================== Tareas nivel prioridad 1 ==================================*/
+		else if(array_nTaskBlocked[PRIOR_1]!=0)
+			selectTasks(PRIOR_1, &idx_tasks, &array_nTaskBlocked);
+		
+		/*============================== Tareas nivel prioridad 2 ==================================*/
+		else if(array_nTaskBlocked[PRIOR_1]!=0)
+			selectTasks(PRIOR_2, &idx_tasks, &array_nTaskBlocked);
+
+		/*============================== Tareas nivel prioridad 3 ==================================*/
+		else if(array_nTaskBlocked[PRIOR_3]!=0)
+			selectTasks(PRIOR_3, &idx_tasks, &array_nTaskBlocked);
+		
+		else{
+		/*==Acá se deberia ejecutar la tarea idle porque no hay tareas activas o todas estan blockeadas*/
+		if(controlOS.statusOS == OS_FROM_RESET){
+			controlOS.currentTask = (taskStructure_t *) &taskIdleStructure;
+			controlOS.changeContext = true;
+		    }
+		else{
+			controlOS.nextTask = (taskStructure_t *) &taskIdleStructure;
+			controlOS.changeContext = false;
 		}
-		else  {
-			controlOS.nextTask = (taskStructure_t *) controlOS.listaTareas[0];
+
+		}	
+	}
+}
+
+/*
+Esta función permite seleccionar tareas en un mismo nivel de prioridad.
+Se le pasa como parametros la prioridad del nivel y un indice que permite barrer las tareas
+*/
+
+void selectTasks(priorOS_t prior, uint8_t *idx_tasks, uint8_t *array_nTaskBlocked){
+
+	bool found_READY=false;
+
+		while(!found_READY){
+					if(((taskStructure_t *) controlOS.priorScheme[prior][idx_tasks[prior]])->taskStatusRRB==TASK_READY){
+					controlOS.nextTask = (taskStructure_t *) controlOS.priorScheme[prior][idx_tasks[prior]];
+					controlOS.changeContext=true;
+					found_READY=true;
+					}
+					else if(((taskStructure_t *) controlOS.priorScheme[prior][idx_tasks[prior]])->taskStatusRRB==TASK_RUNNING && array_nTaskBlocked[prior]==1){
+						controlOS.changeContext=false;
+						found_READY=true;
+					}
+					
+					else{
+					idx_tasks[prior]=idx_tasks[prior]+1;
+						if(idx_tasks[prior]==controlOS.taskxPrior[prior])
+							idx_tasks[prior]=0;
+					}
 		}
+}
+
+
+
+
+
+
+
+
+
+/*
+Esta función es la reponsable de decirme cual es la primer tarea en ejecutarse
+despues de un OS_FROM_RESET. Busca en el array de puntero a tareas. Busca en la primer columna
+hasta encontrar la primer tarea como así su prioridad. La primera vez que se entra al scheduler
+todas las tareas estan en estado READY
+*/
+
+
+uint8_t getFirstTask(void){
+uint8_t getFirst=0xFF;
+    //Busco la cantidad d tareas por prioridad de 0 a 3
+	// el primer valor diferente de 0 tomo el indice 
+	if(controlOS.taskxPrior[PRIOR_0]!=0)
+		getFirst=PRIOR_0;
+	else if (controlOS.taskxPrior[PRIOR_1]!=0)
+		getFirst=PRIOR_1;	
+	else if (controlOS.taskxPrior[PRIOR_2]!=0)	
+		getFirst=PRIOR_2;
+	else if (controlOS.taskxPrior[PRIOR_3]!=0)	
+		getFirst=PRIOR_3;
+	else
+	    getFirst=ERROR_PRIOR;
+	
+	return getFirst;
+}
+
+
+void initIndexTasks(uint8_t *idx_tasks){
+	idx_tasks[PRIOR_0]=0;
+	idx_tasks[PRIOR_1]=0;
+	idx_tasks[PRIOR_2]=0;
+	idx_tasks[PRIOR_3]=0;
+}
+
+/*
+checkTasksTiks recorre todas las tareas y decrementa el valor de ticks en el caso 
+de que ticks_blocked sea mayor que cero.
+*/
+void checkTasksTiks(void){
+
+	uint8_t i=0,j=0;
+
+	for(i=0;i<CANT_PRIOR;i++)
+		for(j=0;j<controlOS.taskxPrior[i];j++)
+			if(((taskStructure_t *)controlOS.priorScheme[i][j])!=NULL){
+				if(((taskStructure_t *)controlOS.priorScheme[i][j])->ticks_blocked>0)
+					((taskStructure_t *)controlOS.priorScheme[i][j])->ticks_blocked--;
+				else if(((taskStructure_t *)controlOS.priorScheme[i][j])->taskStatusRRB==TASK_BLOCKED)
+					((taskStructure_t *)controlOS.priorScheme[i][j])->taskStatusRRB=TASK_READY;				
+			}
+}
+
+
+
+void nTaskBlocked(uint8_t *nBlocked){
+
+	uint8_t i=0,j=0;
+	uint8_t nBlockedAux[CANT_PRIOR];
+
+	for(i=0;i<CANT_PRIOR;i++){
+		nBlockedAux[i]=0;  //inicializo la variable de acumulacion de tareas bloqueadas.
+		nBlocked[i]=0;
 	}
 
+	for (i=0;i<CANT_PRIOR;i++){
+		for(j=0;j<controlOS.taskxPrior[i];j++){
+			if(((taskStructure_t *)controlOS.priorScheme[i][j])!=NULL)
+				if(((taskStructure_t *)controlOS.priorScheme[i][j])->taskStatusRRB==TASK_BLOCKED)
+					nBlockedAux[i]=nBlockedAux[i]+1;
+		}
+	}
+	/*
+	Hago la diferencia entre la cantidad de tareas activas menos las blockeadas para 
+	saber cuantas tareas tengo READY o RUNNING por prioridad
+	*/
+	for(i=0;i<CANT_PRIOR;i++)
+		nBlocked[i]=controlOS.taskxPrior[i]-nBlockedAux[i];
+
+
 }
+
+/*
+Esta función me devuelve la cantidad de tareas bloqueadas de mi OS.
+Si en mi código genere 8 tareas entonces la cantidad máxima de tareas 
+bloqueadas puede alcanzar el valor de 8.
+*/
+/*uint8_t totalTasksBlocked(void){
+	uint8_t total=0;
+	for(uint8_t i=0;i<CANT_PRIOR;i++)
+		total=controlOS.nBlockTasks[i]+total;
+
+	return total;
+}
+*/
+
+
+
 
 
 /*
@@ -175,6 +421,16 @@ pendiente la excepcion PendSV.
 */
 void SysTick_Handler(void)  {
 
+	
+	/*
+	Acá debo cada vez que ingreso chequear las tareas que estan en estado BLOCKED
+	y decrementar el valor de los ticks_blocked, cuando alcanzan un valor igual a cero
+	la tarea pasa automaticamente al estado READY
+	*/
+	
+	checkTasksTiks();
+	
+	
 	/*
 	 * Dentro del SysTick handler se llama al scheduler. Separar el scheduler de
 	 * getContextoSiguiente da libertad para cambiar la politica de scheduling en cualquier
@@ -183,22 +439,10 @@ void SysTick_Handler(void)  {
 
 	scheduler();
 
-	/**
-	 * Se setea el bit correspondiente a la excepcion PendSV
-	 */
-	SCB->ICSR = SCB_ICSR_PENDSVSET_Msk;
-
-	/**
-	 * Instruction Synchronization Barrier; flushes the pipeline and ensures that
-	 * all previous instructions are completed before executing new instructions
-	 */
-	__ISB();
-
-	/**
-	 * Data Synchronization Barrier; ensures that all memory accesses are
-	 * completed before next instruction is executed
-	 */
-	__DSB();
+	if(controlOS.changeContext)
+		triggerPendSV();
+	
+	tickHook();
 }
 
 
@@ -263,14 +507,16 @@ uint32_t getNextContext(uint32_t sp_actual)  {
 	 */
 	else {
 		controlOS.currentTask->stack_pointer = sp_actual;
-		controlOS.currentTask->taskStatusRRB = TASK_READY;
+		
+		if (controlOS.currentTask->taskStatusRRB == TASK_RUNNING)
+			controlOS.currentTask->taskStatusRRB = TASK_READY;
 
 		sp_siguiente = controlOS.nextTask->stack_pointer;
-
 		controlOS.currentTask = controlOS.nextTask;
 		controlOS.currentTask->taskStatusRRB = TASK_RUNNING;
 	}
 
+	controlOS.changeContext=false;
 	return sp_siguiente;
 }
 
@@ -305,8 +551,37 @@ static void initTaskIdle(void)  {
 	taskIdleStructure.entry_point = taskIdle;
 	taskIdleStructure.id = 0xFF;
 	taskIdleStructure.taskStatusRRB = TASK_READY;
+	taskIdleStructure.priority = 0xFF;
+}
+
+taskStatus_t* os_getCurrentTask(void)  {
+	return controlOS.currentTask;
+}
+
+void CpuYield(void)  {
+	scheduler();
+	if(controlOS.changeContext==true)
+		triggerPendSV();
 }
 
 
+void triggerPendSV(void){
+	/**
+	 * Se setea el bit correspondiente a la excepcion PendSV
+	 */
+	SCB->ICSR = SCB_ICSR_PENDSVSET_Msk;
+
+	/**
+	 * Instruction Synchronization Barrier; flushes the pipeline and ensures that
+	 * all previous instructions are completed before executing new instructions
+	 */
+	__ISB();
+
+	/**
+	 * Data Synchronization Barrier; ensures that all memory accesses are
+	 * completed before next instruction is executed
+	 */
+	__DSB();	
+}
 
 
