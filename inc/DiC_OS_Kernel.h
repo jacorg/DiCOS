@@ -69,10 +69,7 @@
 
 
 /*==========Definicion de prioridad, cuatro niveles. El maximo es 0 y el minimo es 3=====*/
-//#define PRIOR_0     0
-//#define PRIOR_1     1
-//#define PRIOR_2     2
-//#define PRIOR_3     3
+#define ID_TASK_IDLE 0xFF
 #define ERROR_PRIOR 0xFF
 /*==================[definicion codigos de error de OS]=================================*/
 #define ERR_OS_CANT_TAREAS		-1

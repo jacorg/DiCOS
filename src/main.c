@@ -9,12 +9,13 @@ Se toma como guía  el OS desarrollado por Mg. Gonzales Sanchez.
 #include "board.h" 
 #include "DiC_OS_Kernel.h" //Definicion y variables usadas por el OS
 #include "DiC_OS_Tasks.h"  //Definición de las tareas del sistema operativo
+#include "DiC_OS_Interrupts.h" // Definición de interrupciones
 /*==================[macros and definitions]=================================*/
 
 #define MILISEC		1000
 
 /*==================[Global data declaration]==============================*/
-
+/*Variable globales para tareas*/
 taskStructure_t taskStructure_0;
 taskStructure_t taskStructure_1;
 taskStructure_t taskStructure_2;
@@ -23,6 +24,10 @@ taskStructure_t taskStructure_4;
 taskStructure_t taskStructure_5;
 taskStructure_t taskStructure_6;
 taskStructure_t taskStructure_7;
+
+
+
+
 
 /*==================[internal functions declaration]=========================*/
 
@@ -53,16 +58,26 @@ int main(void)  {
 	initHardware();
 
     //Instancio la tarea con su correspondiente prioridad
-/*
+
 	createTask(Task_0, &taskStructure_0, PRIORITY_0);
 	createTask(Task_1, &taskStructure_1, PRIORITY_0);
-	createTask(Task_2, &taskStructure_2, PRIORITY_0);
+/*	createTask(Task_2, &taskStructure_2, PRIORITY_0);
+
 	createTask(Task_3, &taskStructure_3, PRIORITY_1);
 	createTask(Task_4, &taskStructure_4, PRIORITY_2);
 	createTask(Task_5, &taskStructure_5, PRIORITY_2);
 	createTask(Task_6, &taskStructure_6, PRIORITY_3);
 	createTask(Task_7, &taskStructure_7, PRIORITY_3);
 */
+
+/*
+	semInit(&semLed1);
+	semInit(&semLed2);
+	semInit(&semLed3);
+*/
+	queueInit(&Tarea1);
+
+
 /*Despues de haber creado todas las tareas con asignación de sus prioridades y configurado las
 variables del OS corro la función initHardware. Si el sistema tiene menos de 8 tareas entonces la 
 lista de tareas del OS se asignan con NULL

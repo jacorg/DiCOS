@@ -173,36 +173,9 @@ static void scheduler(void)  {
 	                                  //tarea a ser ejecutada
 
 	static uint8_t idx_tasks[CANT_PRIOR];	//En este araay tengo los indices a cada tarea que se ejecuta
-	                                        						  
+	taskStructure_t *currentTask;                                        						  
 
-	//uint8_t indice;		//variable auxiliar para legibilidad
 
-	/*
-	 * El scheduler recibe la informacion desde la variable estado de sistema si es el primer ingreso
-	 * desde el ultimo reset. Si esto es asi, determina que la tarea actual es la primer tarea.
-	 */
-	
-//	if (controlOS.statusOS == OS_FROM_RESET)  {
-//		controlOS.currentTask = (taskStructure_t *) controlOS.listaTareas[0];
-//	}
-	
-
-//	else {
-		
-		/*
-		 * Obtenemos la siguiente tarea en el vector. Si se llega a la ultima tarea disponible
-		 * se hace un reset del contador
-		 */
-//		indice = controlOS.currentTask->id+1;
-//		if(indice < controlOS.cantidad_Tareas)  {
-//			controlOS.nextTask = (taskStructure_t *) controlOS.listaTareas[indice];
-//		}
-//		else  {
-//			controlOS.nextTask = (taskStructure_t *) controlOS.listaTareas[0];
-//		}
-//	}
-	
-/*----------------------------------------------------------------------------------------*/
 	/*Acá verifico que la cant de tareas no sea cero o que todas las tareas esten
 	bloqueadas en cuyo caso se entra a la función taskIdle
 	*/
@@ -230,18 +203,14 @@ static void scheduler(void)  {
 	*/
 	
 	else {  
-	/*
-	Deberia verificar las tareas BLOCKED y chequear si no llego a 0 los tick para pasar a READY
-    Además debo verificar si la cantidad de tareas bloqueadas es igual a la cantidad 
-	de tareas disponible en cuyo caso llamo a la tarea idle.
-	*/
-
-
+	
 	/*
 	La función nTaskBlocked es la responsable de determinar las cantidad de tareas que estan en
-	estado BLOCKED. Luego hace la diferencia con la cantidad total de tareas cargadas por nivel
+	estado BLOCKED. A partir de esta información, luego hace la diferencia con la cantidad total de tareas cargadas por nivel
 	de prioridad y me da como resultado la cantidad de tareas en estado (RUNNING o READY) por 
-	cada nivel. Antes de determinar que tareas correr ejecuto esta operación
+	cada nivel. Si por ejemplo existen 3 tareas corriendo en el nivel 0 y las 3 se encuentran bloqueadas
+	porque se usaron delays, entonces nTaskBlocked devuelve para el nivel 0 un valor igual a 0. los if-else if
+	debajo determinan a que nivel de prioridad se debe ir a buscar otras tareas en estado READY.
 	*/
 
 		nTaskBlocked(&array_nTaskBlocked);
@@ -264,17 +233,34 @@ static void scheduler(void)  {
 		
 		else{
 		/*==Acá se deberia ejecutar la tarea idle porque no hay tareas activas o todas estan blockeadas*/
+		/*El sistema se inicia en OS_FROM_RESET. Si el usuario no genero ninguna tarea apenas se 
+		inicia el OS la tareas que comenzará a ejecutarse sera la taskIdle.
+
+		Si el usuario, genero tareas pero en un momento determinado TODAS se encuentran bloqueadas 
+		entonces también en ese caso se pasa a la tarea idle. Es importante para este punto determinar
+		si se necesita hacer o no un cambio de contexto. Para ello se carga el contexto actual de 
+		la tarea y se verifica el ID. La tarea IDLE tieen un ID muy diferente a las tareas ordinarias.
+		*/
 		if(controlOS.statusOS == OS_FROM_RESET){
 			controlOS.currentTask = (taskStructure_t *) &taskIdleStructure;
 			controlOS.changeContext = true;
 		    }
 		else{
 			controlOS.nextTask = (taskStructure_t *) &taskIdleStructure;
-			controlOS.changeContext = false;
+			currentTask=os_getCurrentTask();
+			if (currentTask->priority==ID_TASK_IDLE)
+				controlOS.changeContext = false;
+			else
+				controlOS.changeContext = true;	
 		}
 
 		}	
 	}
+
+	if(controlOS.changeContext==true)
+		triggerPendSV();
+
+
 }
 
 /*
@@ -305,14 +291,6 @@ void selectTasks(priorOS_t prior, uint8_t *idx_tasks, uint8_t *array_nTaskBlocke
 		}
 }
 
-
-
-
-
-
-
-
-
 /*
 Esta función es la reponsable de decirme cual es la primer tarea en ejecutarse
 despues de un OS_FROM_RESET. Busca en el array de puntero a tareas. Busca en la primer columna
@@ -339,7 +317,10 @@ uint8_t getFirst=0xFF;
 	return getFirst;
 }
 
-
+/*
+Simple función de inicializacion de los indices por cada prioridad a 0. Esto se realiza cuando 
+se ingresa desde un OS_FROM_RESET.
+*/
 void initIndexTasks(uint8_t *idx_tasks){
 	idx_tasks[PRIOR_0]=0;
 	idx_tasks[PRIOR_1]=0;
@@ -349,23 +330,32 @@ void initIndexTasks(uint8_t *idx_tasks){
 
 /*
 checkTasksTiks recorre todas las tareas y decrementa el valor de ticks en el caso 
-de que ticks_blocked sea mayor que cero.
+de que ticks_blocked sea mayor que cero. Si se determina que la tarea estaba en estado 
+BLOCKED y los ticks llegaron a cero entonces se procede a pasar al estado READY.
 */
 void checkTasksTiks(void){
 
 	uint8_t i=0,j=0;
-
+/*El ciclo for debajo lo modifique porque se corre el riego de que ademas de desbloquear tareas
+que esten BLOCKEADAS por timer tambien lo haga por el manejo de semaforo.
+*/
 	for(i=0;i<CANT_PRIOR;i++)
 		for(j=0;j<controlOS.taskxPrior[i];j++)
 			if(((taskStructure_t *)controlOS.priorScheme[i][j])!=NULL){
-				if(((taskStructure_t *)controlOS.priorScheme[i][j])->ticks_blocked>0)
+				if(((taskStructure_t *)controlOS.priorScheme[i][j])->ticks_blocked>0){
 					((taskStructure_t *)controlOS.priorScheme[i][j])->ticks_blocked--;
-				else if(((taskStructure_t *)controlOS.priorScheme[i][j])->taskStatusRRB==TASK_BLOCKED)
-					((taskStructure_t *)controlOS.priorScheme[i][j])->taskStatusRRB=TASK_READY;				
+					if(((taskStructure_t *)controlOS.priorScheme[i][j])->taskStatusRRB==TASK_BLOCKED && ((taskStructure_t *)controlOS.priorScheme[i][j])->ticks_blocked==0)
+						((taskStructure_t *)controlOS.priorScheme[i][j])->taskStatusRRB=TASK_READY;				
+				}
+			
 			}
 }
 
-
+/*
+Determina la cantidad d tareas en estado RUNNING o READY por cada nivel de prioridad.
+Se hace la diferencia entre la cantidad de tareas creadas en un nivel de prioridad menos la 
+cantidad de tareas bloqueadas en el momento de hacer el scheduling.
+*/
 
 void nTaskBlocked(uint8_t *nBlocked){
 
@@ -393,23 +383,6 @@ void nTaskBlocked(uint8_t *nBlocked){
 
 
 }
-
-/*
-Esta función me devuelve la cantidad de tareas bloqueadas de mi OS.
-Si en mi código genere 8 tareas entonces la cantidad máxima de tareas 
-bloqueadas puede alcanzar el valor de 8.
-*/
-/*uint8_t totalTasksBlocked(void){
-	uint8_t total=0;
-	for(uint8_t i=0;i<CANT_PRIOR;i++)
-		total=controlOS.nBlockTasks[i]+total;
-
-	return total;
-}
-*/
-
-
-
 
 
 /*
@@ -439,8 +412,8 @@ void SysTick_Handler(void)  {
 
 	scheduler();
 
-	if(controlOS.changeContext)
-		triggerPendSV();
+	//if(controlOS.changeContext)
+	//	triggerPendSV();
 	
 	tickHook();
 }
@@ -549,9 +522,9 @@ static void initTaskIdle(void)  {
 	taskIdleStructure.stack_pointer = (uint32_t) (taskIdleStructure.stack + STACK_SIZE/4 - FULL_STACKING_SIZE);
 
 	taskIdleStructure.entry_point = taskIdle;
-	taskIdleStructure.id = 0xFF;
+	taskIdleStructure.id = ID_TASK_IDLE;
 	taskIdleStructure.taskStatusRRB = TASK_READY;
-	taskIdleStructure.priority = 0xFF;
+	taskIdleStructure.priority = ID_TASK_IDLE;
 }
 
 taskStatus_t* os_getCurrentTask(void)  {
@@ -560,12 +533,13 @@ taskStatus_t* os_getCurrentTask(void)  {
 
 void CpuYield(void)  {
 	scheduler();
-	if(controlOS.changeContext==true)
-		triggerPendSV();
 }
 
 
 void triggerPendSV(void){
+	
+	controlOS.changeContext=false;
+	
 	/**
 	 * Se setea el bit correspondiente a la excepcion PendSV
 	 */
