@@ -8,11 +8,11 @@ Implementación 8 tareas que tiene el OS.
 Implementación de la función createTask se asigna prioridad a la tareas entre 0 (max) y 3(mín).
 
 Se necesita implementar el sistema de prioridades para atención de tareas.
--------------------------------------------------------------------------------------------------------
+
 Se implemento diagrama de scheduling basado en asignacion de prioridades, se implemento
 función delay dentro de la API. Falta documentar las funciones. Se comienza con la implementación
 de los semaforos y colas
--------------------------------------------------------------------------------------------------------
+
 Se implementaron las funciones de API para menejo de colas y semaforos.
 Se implemento las funciones de llamado a interrupciones.
 Falta validad con diferentes tareas el correcto funcionamiento de las colas.
