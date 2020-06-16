@@ -22,11 +22,13 @@ En este desarrollo se evalua a DiC_OS para la medición de tiempos con teclas TE
 taskStructure_t taskStructure_0;
 taskStructure_t taskStructure_1;
 taskStructure_t taskStructure_2;
+/*
 taskStructure_t taskStructure_3;
 taskStructure_t taskStructure_4;
 taskStructure_t taskStructure_5;
 taskStructure_t taskStructure_6;
 taskStructure_t taskStructure_7;
+*/
 
 /*==================[internal functions declaration]=========================*/
 

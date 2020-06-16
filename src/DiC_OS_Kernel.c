@@ -2,7 +2,8 @@
  * DiC_OS_Kernel.c
  *
  *  Author: Jacobo Salvador
- *  Se toma como guía  el OS desarrollado por Mg. Gonzales Sanchez. 
+ *  Se toma como guía  el OS desarrollado por Mg. Gonzales Sanchez.
+ * (https://github.com/gonzaloesanchez/MSE_OS) 
  */
 
 /*------------------------------Funciones en DiC_OS_Kernel------------------------------
@@ -25,11 +26,7 @@
 |------>PendSV_Handler
 				|------>uint32_t getNextContext(uint32_t sp_actual)
 				
-
-
 |------>os_getCurrentTask()
-
-
 */
 
 #include "DiC_OS_Kernel.h"

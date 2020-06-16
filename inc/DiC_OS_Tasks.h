@@ -8,8 +8,6 @@
 #include "sapi.h"
 #include "DiC_OS_Interrupts.h"
 
-
-
 /*==========Definicion de prioridad, cuatro niveles. El maximo es 0 y el minimo es 3=====*/
 #define PRIORITY_0 0
 #define PRIORITY_1 1
@@ -74,11 +72,13 @@ char charTon[20];
 void Task_0(void);
 void Task_1(void);
 void Task_2(void);
+/*
 void Task_3(void);
 void Task_4(void);
 void Task_5(void);
 void Task_6(void);
 void Task_7(void);
+*/
 
 /*------------------Prototipo handler de interrupcion para teclas 1 y 2------------------*/
 void TEC1_Handler(void);
