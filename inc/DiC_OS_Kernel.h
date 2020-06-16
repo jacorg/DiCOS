@@ -154,6 +154,8 @@ struct controlOS  {
 											//puede suceder que haya solo una tarea en una 
 											//determinada prioridad corriendo y no sea necesario cambiarla.
 
+	uint32_t tickOS;                        //El systick incrementa esta cariable la utilizo para determinar 
+											//tiempos y hacer las diferencias entre ellos.
 /*========================================================================================*/
 	taskStructure_t *currentTask;            //definicion de puntero para tarea actual
 	taskStructure_t *nextTask;		         //definicion de puntero para tarea siguiente
@@ -181,6 +183,20 @@ void initIndexTasks(uint8_t *idx_tasks); // Permite la inicialiazon de los indic
 /*Permite seleccionar tareas disponibles dentro de una determinada prioridad*/
 void selectTasks(priorOS_t prior, uint8_t *idx_tasks, uint8_t *array_nTaskBlocked);
 
+/*
+Devuelve los ticks relativos despues de un RESET del sistema, lo utilizo para calcular los tiempos.
+*/
+uint32_t getTicksFromOS(void);
+
+/*
+Incrementos ticksOS del DiC_OS
+*/
+void setTicksOS(void);
+
+/*
+Inicializo ticksOS del OS, despues de un RESET cada vez que ingresa en el systick se incrementa en 1
+*/
+void initTicksFromOS(void);
 
 /* Definicion de funcion static*/
 //static void taskIdle(void);

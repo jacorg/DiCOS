@@ -104,7 +104,8 @@ void semGive(semDiCOS_t* sem){
 
 }
 
-/*---------------------------------------Queues--------------------------------------------
+/*-----------------------------------------------------------------------------------------
+---------------------------------------Queues----------------------------------------------
 ------------------------------------------------------------------------------------------*/
 /*
 REQUERIMIENTOS:
@@ -128,7 +129,10 @@ void queuePut(queue_t* queue, dataTypeQueue_t* data){
 	taskStructure_t* currentTask;
 	uint16_t next;
 
-    
+    /*
+	Si la tarea del otro lado de la cola estaba bloqueada porque no habia datos la desbloqueo 
+	en este punto porque se supone que colocaré un dato
+	*/
 	if(((queue->idx_head == queue->idx_tail) && queue->task != NULL) && queue->task->taskStatusRRB == TASK_BLOCKED){
 			queue->task->taskStatusRRB = TASK_READY;
 	}
@@ -140,14 +144,13 @@ void queuePut(queue_t* queue, dataTypeQueue_t* data){
         	next = 0;
 
     	while (next == queue->idx_tail){                  // if the head + 1 == tail, circular buffer is full
-       		currentTask->taskStatusRRB == TASK_BLOCKED;//return -1;  tarea se deberia bloquer ACA!!!!!!!!!!!!!1
+       		currentTask->taskStatusRRB = TASK_BLOCKED;//return -1;  tarea se deberia bloquer ACA!!!!!!!!!!!!!1
 			queue->task = currentTask;
 			CpuYield();   
 		}									
-    	queue->data[queue->idx_head] = *data;    // Load data and then move
+    	queue->data[queue->idx_head] = *data;   // Load data and then move
     	queue->idx_head = next;                 // head to next data offset.
-                                            //return 0;  // return success to indicate successful push.
-
+                                                //return 0;  // return success to indicate successful push.
 	}
 }
 
@@ -156,17 +159,20 @@ void queueGet(queue_t* queue, dataTypeQueue_t* data){
 	uint16_t next;
 	taskStructure_t *currentTask;
 
-	if( queue->idx_head == QUEUE_SIZE && queue->task != NULL && queue->task->taskStatusRRB == TASK_BLOCKED)
+	 /*
+	Si la tarea del otro lado de la cola estaba bloqueada porque estaba llena para escribir dato 
+	se desbloque en este punto porque se supone que leeré un dato.
+	*/
+	if( (queue->idx_head==queue->idx_tail) && (queue->task != NULL) && (queue->task->taskStatusRRB == TASK_BLOCKED))
 		queue->task->taskStatusRRB = TASK_READY;
 	
-
-    
 	currentTask = os_getCurrentTask();
 	if(currentTask->taskStatusRRB == TASK_RUNNING){
 		
 		while (queue->idx_head == queue->idx_tail){  // if the head == tail, we don't have any data                                 
 			currentTask->taskStatusRRB = TASK_BLOCKED;
 			queue->task = currentTask;
+			//queue->idx_head=queue->idx_tail=0;
 			CpuYield();	
 		}							  
 	

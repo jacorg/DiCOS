@@ -7,9 +7,9 @@ Definición de la estructura para implementación de semaforos binarios sobre Di
 #define TAKE 1
 #define GIVE 0
 
-#define QUEUE_SIZE 64
+#define QUEUE_SIZE 100         //Tamaño del Queue
 
-
+/*Tipo de dato que se envia por el queue  en este caso es un int y una variable string*/
 struct dataTypeQueue{
     int32_t dato_int;
 	char txt[3];
@@ -22,7 +22,7 @@ struct queue {
 	taskStructure_t* task;
 	uint16_t idx_head;
 	uint16_t idx_tail;
-    uint16_t maxlen;
+    //uint16_t maxlen;
 };
 
 typedef struct queue queue_t;

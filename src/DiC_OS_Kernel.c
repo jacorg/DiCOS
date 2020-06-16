@@ -89,14 +89,7 @@ void createTask(void *entryPoint, taskStructure_t *task,uint8_t priority)  {
 		task->taskStatusRRB = TASK_READY;    //Siempre la tarea al crearse se inicia en READY
 
 		task->priority=priority;             //Almaceno la prioridad de la tarea
-     
-
-		/*
-		 * Actualizacion de la estructura de control del OS, guardando el puntero a la estructura de tarea
-		 * que se acaba de inicializar, y se actualiza la cantidad de tareas definidas en el sistema.
-		 * Luego se incrementa el contador de id, dado que se le otorga un id correlativo a cada tarea
-		 * inicializada, segun el orden en que se inicializan.
-		 */
+     	
 		controlOS.listaTareas[id] = task;
 		controlOS.cantidad_Tareas++;
 
@@ -123,6 +116,14 @@ void os_Init(void)  {
 
 	initTaskIdle();
 
+	/*
+	Inicializo el sistema de Ticks del OS para calcular los tiempos de pulsados de teclas 
+	y otro tipo de requerimiento que necesite la medición de tiempos.
+	*/
+	initTicksFromOS();
+	
+	
+	
 	/*
 	 * Al iniciar el OS se especifica que se encuentra en la primer ejecucion desde un reset.
 	 * Este estado es util para cuando se debe ejecutar el primer cambio de contexto. Los
@@ -394,6 +395,12 @@ pendiente la excepcion PendSV.
 */
 void SysTick_Handler(void)  {
 
+	/*
+	Incremento TicksOS en uno, lo coloco acá porque el ssytick es la interrupcion de mayor 
+	prioridad.
+	*/
+	setTicksOS();
+	
 	
 	/*
 	Acá debo cada vez que ingreso chequear las tareas que estan en estado BLOCKED
@@ -558,4 +565,26 @@ void triggerPendSV(void){
 	__DSB();	
 }
 
+
+
+/*
+Devuelve los ticks relativos despues de un RESET del sistema, lo utilizo para calcular los tiempos.
+*/
+uint32_t getTicksFromOS(void){
+	return controlOS.tickOS;
+}
+
+/*
+Incrementos ticksOS del DiC_OS
+*/
+void setTicksOS(void){
+	controlOS.tickOS++;
+}
+
+/*
+Inicializo ticksOS del OS, despues de un RESET cada vez que ingresa en el systick se incrementa en 1
+*/
+void initTicksFromOS(void){
+	controlOS.tickOS=0;
+}
 

@@ -19,3 +19,7 @@ Falta validad con diferentes tareas el correcto funcionamiento de las colas.
 Se corrigió un error en el scheduling que provocaba un error en el cambio de contexto
 cuando se utilizaban varios delays en tareas diferentes (todas las tareas del usuario se bloqueaban y 
 no se producía el cambio de contecto a la tarea Idle).
+
+
+Subo parte de la resolución del parcial. Falta solamente el envio de los datos por medio de la UART
+todos los otros requerimientos estan funcionando correctamente.
