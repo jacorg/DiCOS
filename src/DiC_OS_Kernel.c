@@ -13,10 +13,23 @@
 				|------>static void initTaskIdle(void)
 
 |------>void SysTick_Handler(void)
+					|------>setTicksOS()
                     |------>static void scheduler(void)
+					|------>checkTasksTiks()
 
+|------>scheduler()
+					|------>getFirstTask()
+					|------>nTaskBlocked
+					|------>selectTasks
+				
 |------>PendSV_Handler
 				|------>uint32_t getNextContext(uint32_t sp_actual)
+				
+
+
+|------>os_getCurrentTask()
+
+
 */
 
 #include "DiC_OS_Kernel.h"

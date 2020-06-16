@@ -1,7 +1,9 @@
 
 /* DiCOS: Es un sistema operativo pra el procesamiento y control digital
-+de un sistema de sensado remoto LiDAR.
+de un sistema de sensado remoto LiDAR.
 Se toma como guía  el OS desarrollado por Mg. Gonzales Sanchez. 
+
+En este desarrollo se evalua a DiC_OS para la medición de tiempos con teclas TEC1 y TEC2
 */
 
 /*==================[inclusions]=============================================*/
@@ -43,29 +45,19 @@ static void initHardware(void)  {
 	SysTick_Config(SystemCoreClock / MILISEC);		//systick 1ms
 }
 
-/*==================[Definicion de tareas para el OS]==========================*/
 
-
-
-
-/*============================================================================*/
-DEBUG_PRINT_ENABLE
-CONSOLE_PRINT_ENABLE
 int main(void)  {
 
 	initHardware();
-	debugPrintConfigUart ( UART_USB, 115200 );
-
+	
     //Instancio la tarea con su correspondiente prioridad
 	/*La tarea 1 se encarga de manejar la tecla TEC1 por medio de la interrupción*/
 	createTask(Task_0, &taskStructure_0, PRIORITY_0);
 	/*La tarea 2 se encarga de manejar la tecla TEC2 por medio de la interrupción*/
 	createTask(Task_1, &taskStructure_1, PRIORITY_0);
-	/*Clasifica los tiempos t1 y t2 y calcula tiempo de encendido y delay en leds*/
+	/*Clasifica los tiempos t1 y t2 y calcula tiempo de encendido y delay en leds y ejecuta la impresión*/
 	createTask(Task_2, &taskStructure_2, PRIORITY_0);
-	/*Impresión de mensajes por medio de UART*/
-	createTask(Task_3, &taskStructure_3, PRIORITY_1);
-
+	
 
 	semInit(&semTEC1);//Los uso para menejo de la interrupción de teclado y 
 					  //determinar presionado o soltado de TEC1
@@ -73,6 +65,13 @@ int main(void)  {
 	semInit(&semTEC2);//Los uso para menejo de la interrupción de teclado y 
 					  //determinar presionado o soltado de TEC2
 	
+	/*
+	Uso la señalización por semaforo binario endTEC1 y endTEC2 para indicar 
+	a la tarea 3 que es la responsable de detectar que ambas teclas han 
+	finalizado el ciclo de pulsado y soltado. Luego del fin de las pulsaciones 
+	hago el calculo diferencia de tiempo, evaluó los casos y represento por UART, 
+	según los requerimientos del parcial.
+	*/
 	semInit(&endTEC1);
 	semInit(&endTEC2);
 
