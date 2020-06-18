@@ -7,13 +7,27 @@ Definición de la estructura para implementación de semaforos binarios sobre Di
 #define TAKE 1
 #define GIVE 0
 
-#define QUEUE_SIZE 100         //Tamaño del Queue
+#define QUEUE_SIZE 200         //Tamaño del Queue
 
 /*Tipo de dato que se envia por el queue  en este caso es un int y una variable string*/
-struct dataTypeQueue{
-    int32_t dato_int;
-	char txt[3];
 
+enum whatKey{
+	TIPO_TEC1,
+	TIPO_TEC2,
+	ANY
+};
+typedef enum whatKey whatKey_t;
+
+struct timeTec{
+	whatKey_t tecla;
+	uint32_t t1;
+	uint32_t t2;
+};
+typedef struct timeTec timeTec_t;
+
+
+struct dataTypeQueue{
+    timeTec_t timeTECs;
 };
 typedef struct dataTypeQueue dataTypeQueue_t;
 

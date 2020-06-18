@@ -42,7 +42,11 @@ PendSV_Handler:
 	* stack inicial, ese stack se pierde porque no hay seguimiento del MSP en el primer ingreso
 	*/
 
-
+/*--------------------------------Inicio sección crítica-----------------------------------*/
+	cpsid i				//deshabilito las interrupciones globales
+	
+	
+	
 	/*
 	* Las tres primeras corresponden a un testeo del bit EXEC_RETURN[4]. La instruccion TST hace un
 	* AND estilo bitwise (bit a bit) entre el registro LR y el literal inmediato. El resultado de esta
@@ -71,5 +75,8 @@ PendSV_Handler:
 	tst lr,0x10
 	it eq
 	vpopeq {s16-s31}
+	
+/*------------------------------ Fin de la seccion critica -------------------------------*/
+	cpsie i				    //habilitación global de las interrupciones
 	bx lr					//se hace un branch indirect con el valor de LR que es nuevamente EXEC_RETURN
 

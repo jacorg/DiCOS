@@ -13,11 +13,15 @@ En este desarrollo se evalua a DiC_OS para la medición de tiempos con teclas TE
 #include "DiC_OS_Kernel.h" //Definicion y variables usadas por el OS
 #include "DiC_OS_Tasks.h"  //Definición de las tareas del sistema operativo
 #include "DiC_OS_Interrupts.h" // Definición de interrupciones
+//#include "DiC_OS_keys.h"
 /*==================[macros and definitions]=================================*/
 
 #define MILISEC		1000
 
 /*==================[Global data declaration]==============================*/
+
+
+
 /*Variable globales para tareas*/
 taskStructure_t taskStructure_0;
 taskStructure_t taskStructure_1;
@@ -51,6 +55,10 @@ static void initHardware(void)  {
 int main(void)  {
 
 	initHardware();
+	setupTECsInterrupts(TEC1_i,TEC1_PORT,TEC1_BIT_EVAL,FALLING_AND_RISING_INT);
+	setupTECsInterrupts(TEC2_i,TEC2_PORT,TEC2_BIT_EVAL,FALLING_AND_RISING_INT);
+	addingInterrupts();
+	queueInit(&msgTimeTECs);
 	
     //Instancio la tarea con su correspondiente prioridad
 	/*La tarea 1 se encarga de manejar la tecla TEC1 por medio de la interrupción*/

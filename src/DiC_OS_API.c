@@ -146,7 +146,8 @@ void queuePut(queue_t* queue, dataTypeQueue_t* data){
     	while (next == queue->idx_tail){                  // if the head + 1 == tail, circular buffer is full
        		currentTask->taskStatusRRB = TASK_BLOCKED;//return -1;  tarea se deberia bloquer ACA!!!!!!!!!!!!!1
 			queue->task = currentTask;
-			CpuYield();   
+			CpuYield();
+			next=0;                      				//condición para que pueda salir del loop sino siempre queda blockeada   
 		}									
     	queue->data[queue->idx_head] = *data;   // Load data and then move
     	queue->idx_head = next;                 // head to next data offset.

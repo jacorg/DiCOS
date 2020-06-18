@@ -1,5 +1,5 @@
 #include "DiC_OS_Tasks.h"
-//#include "DiC_OS_API.h"
+#include "DiC_OS_keys.h"
 
 
 //Author: Jacobo Salvador
@@ -11,14 +11,14 @@ void Task_0(void){
 Acá coloco el setup de las interrupciones para que se activen tanto en flanco de bajada
 como de subida.
 */
-    
+    /*
     Chip_SCU_GPIOIntPinSel (TEC1_i,0 ,4 ) ;
     Chip_PININT_ClearIntStatus (LPC_GPIO_PIN_INT,PININTCH( TEC1_i ));
     Chip_PININT_SetPinModeEdge (LPC_GPIO_PIN_INT,PININTCH( TEC1_i ));
     Chip_PININT_EnableIntLow   (LPC_GPIO_PIN_INT,PININTCH( TEC1_i ));
     Chip_PININT_EnableIntHigh  (LPC_GPIO_PIN_INT,PININTCH( TEC1_i ));
     addingInterrupt( TEC1_Handler ,PIN_INT0_IRQn+TEC1_i,255);
-
+*/
     statusTEC1=FALLING;                            //Variabld de la máquina de estados
     ticksFallingTEC1=0;
     ticksRisingTEC1=0;
@@ -35,11 +35,16 @@ como de subida.
         case FALLING:
             ticksFallingTEC1=getTicksFromOS();
             statusTEC1=RISING; //preparo para el proximo estado
+            timeEventTx1.timeTECs.tecla=TIPO_TEC1;
+            timeEventTx1.timeTECs.t1=ticksFallingTEC1;
+ 
             break;
 
         case RISING:
             ticksRisingTEC1=getTicksFromOS();
+            timeEventTx1.timeTECs.t2=ticksRisingTEC1;
             statusTEC1=FALLING;
+            queuePut(&msgTimeTECs,&timeEventTx1);
             semGive(&endTEC1);   //Indico final de un ciclo de pulsación
             break;
         
@@ -50,13 +55,14 @@ como de subida.
 }
 
 void Task_1(void){
-    
+   /* 
     Chip_SCU_GPIOIntPinSel(TEC2_i,0 ,8 ) ;
     Chip_PININT_ClearIntStatus (LPC_GPIO_PIN_INT,PININTCH(TEC2_i));
     Chip_PININT_SetPinModeEdge (LPC_GPIO_PIN_INT,PININTCH(TEC1_i));
     Chip_PININT_EnableIntLow   (LPC_GPIO_PIN_INT,PININTCH(TEC2_i));
     Chip_PININT_EnableIntHigh  (LPC_GPIO_PIN_INT,PININTCH(TEC2_i));
     addingInterrupt( TEC2_Handler ,PIN_INT0_IRQn+TEC2_i,255); 
+    */
     
     statusTEC2=FALLING;                            //Variabld de la máquina de estados
     ticksFallingTEC2=0;
@@ -74,19 +80,22 @@ void Task_1(void){
         {
         case FALLING:
             ticksFallingTEC2=getTicksFromOS();
+            timeEventTx2.timeTECs.tecla=TIPO_TEC2;
+            timeEventTx2.timeTECs.t1=ticksFallingTEC2;
             statusTEC2=RISING; //preparo para el proximo estado
             break;
 
         case RISING:
             ticksRisingTEC2=getTicksFromOS();
+            timeEventTx2.timeTECs.t2=ticksRisingTEC2;
             statusTEC2=FALLING;
+            queuePut(&msgTimeTECs,&timeEventTx2);
             semGive(&endTEC2);  //Indico final de un ciclo de pulsación
             break;
         
         default:
             break;
         }
-
     }
 }
 
@@ -106,11 +115,17 @@ void Task_2(void){
 	uartWriteString (UART_USB ,"DiC_OS: Examen de ISO-I-Jacobo Salvador.\n\r");
     
     while(1){
-        semTake(&endTEC1); //con los semaforos binarios me permite asegurar que se termino
-        semTake(&endTEC2); //el ciclo de pulsado y soltado en ambas teclas.
-                           //ahora me dedico a calcular la diferencia de tiempos y analizar 
-                           //los cuatro casos posibles.
+        //semTake(&endTEC1); //con los semaforos binarios me permite asegurar que se termino
+        //semTake(&endTEC2); //el ciclo de pulsado y soltado en ambas teclas.
+                             //ahora me dedico a calcular la diferencia de tiempos y analizar 
+                            //los cuatro casos posibles.
         
+
+        semTake(&endTEC1);
+        queueGet(&msgTimeTECs,&timeEventRx1);
+        semTake(&endTEC2);
+        queueGet(&msgTimeTECs,&timeEventRx2);
+
         t1=(int32_t)ticksFallingTEC1-(int32_t)ticksFallingTEC2;
         t2=(int32_t)ticksRisingTEC1-(int32_t)ticksRisingTEC2;
         ton=(uint32_t)(abs(t1)+abs(t2));  //Sumo el valor absoluto de los dos tiempos
@@ -152,22 +167,6 @@ hasta que sea cero. Luego la tarea pasa al estado READY.
         else
             gpioWrite(LEDR,true);
     }
-}
-
-
-
-//estas son las funciones que se instalan en el osHandlerVector para ser llamadas ante una
-//interrupcion de teclas.
-void TEC1_Handler(void)
-{
-   Chip_PININT_ClearIntStatus (LPC_GPIO_PIN_INT ,PININTCH(TEC1_i)); // limpia el flag                                                 
-    semGive(&semTEC1); //Libero semaforo de la Tecla 1
-}
-//idem gpio1handler
-void TEC2_Handler(void)
-{
-   Chip_PININT_ClearIntStatus (LPC_GPIO_PIN_INT,PININTCH(TEC2_i));
-   semGive(&semTEC2);//Libero semaforo de la Tecla 2
 }
 
 /*
