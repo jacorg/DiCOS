@@ -59,7 +59,8 @@ int main(void)  {
 	setupTECsInterrupts(TEC2_i,TEC2_PORT,TEC2_BIT_EVAL,FALLING_AND_RISING_INT);
 	addingInterrupts();
 	queueInit(&msgTimeTECs);
-	
+	//Configuración de la UART y msj de bienvenida
+    uartConfig(UART_USB, 115200 );
     //Instancio la tarea con su correspondiente prioridad
 	/*La tarea 1 se encarga de manejar la tecla TEC1 por medio de la interrupción*/
 	createTask(Task_0, &taskStructure_0, PRIORITY_0);

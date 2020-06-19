@@ -36,17 +36,6 @@ statusTEC_t statusTEC1,statusTEC2;
 colorLEDs_t colorLED;
 
 /*-----------------------------Variables globales tarea 1 y 2----------------------------*/
-    
-
-uint32_t ticksFallingTEC1,ticksRisingTEC1;  //No es necesario resetear estos valores
-                                            //a cero dentro de la while true 
-                                            //porque la medición de tiempo es relativa a otra tecla.
-
-
-
-uint32_t ticksFallingTEC2,ticksRisingTEC2;  //No es necesario resetear estos valores
-                                            //a cero dentro de la while true 
-                                            //porque la medición de tiempo es relativa a otra tecla.
 
 
 
@@ -78,4 +67,5 @@ void sendDataTimeUART(int32_t * t1, int32_t *t2);
 
 char* itoa(int value, char* result, int base); //Conversion de datos númericos int en strings
 
+void nothingFunc(void);
 #endif

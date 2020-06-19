@@ -5,23 +5,15 @@
 //Author: Jacobo Salvador
 //Defino las 3 tareas del sistema operativo.
 
-
-void Task_0(void){
 /*
-Acá coloco el setup de las interrupciones para que se activen tanto en flanco de bajada
-como de subida.
+Tarea 1 asociada con el manejo de la tecla 1, la comunicacion con la tarea 3 se hace por medio
+de colas
 */
-    /*
-    Chip_SCU_GPIOIntPinSel (TEC1_i,0 ,4 ) ;
-    Chip_PININT_ClearIntStatus (LPC_GPIO_PIN_INT,PININTCH( TEC1_i ));
-    Chip_PININT_SetPinModeEdge (LPC_GPIO_PIN_INT,PININTCH( TEC1_i ));
-    Chip_PININT_EnableIntLow   (LPC_GPIO_PIN_INT,PININTCH( TEC1_i ));
-    Chip_PININT_EnableIntHigh  (LPC_GPIO_PIN_INT,PININTCH( TEC1_i ));
-    addingInterrupt( TEC1_Handler ,PIN_INT0_IRQn+TEC1_i,255);
-*/
+void Task_0(void){
+
     statusTEC1=FALLING;                            //Variabld de la máquina de estados
-    ticksFallingTEC1=0;
-    ticksRisingTEC1=0;
+    uint32_t ticksFallingTEC1=0;
+    uint32_t ticksRisingTEC1=0;
     while(1){
         
         semTake(&semTEC1);
@@ -53,20 +45,15 @@ como de subida.
         }
     }
 }
-
+/*
+Tarea 2 asociada con el manejo de la tecla 2, la comunicacion con la tarea 3 se hace por medio
+de colas
+*/
 void Task_1(void){
-   /* 
-    Chip_SCU_GPIOIntPinSel(TEC2_i,0 ,8 ) ;
-    Chip_PININT_ClearIntStatus (LPC_GPIO_PIN_INT,PININTCH(TEC2_i));
-    Chip_PININT_SetPinModeEdge (LPC_GPIO_PIN_INT,PININTCH(TEC1_i));
-    Chip_PININT_EnableIntLow   (LPC_GPIO_PIN_INT,PININTCH(TEC2_i));
-    Chip_PININT_EnableIntHigh  (LPC_GPIO_PIN_INT,PININTCH(TEC2_i));
-    addingInterrupt( TEC2_Handler ,PIN_INT0_IRQn+TEC2_i,255); 
-    */
-    
+  
     statusTEC2=FALLING;                            //Variabld de la máquina de estados
-    ticksFallingTEC2=0;
-    ticksRisingTEC2=0;
+    uint32_t ticksFallingTEC2=0;
+    uint32_t ticksRisingTEC2=0;
     
     while(1){
 
@@ -106,50 +93,85 @@ En base a el resultado de la diferencia de tiempos empezare a clasificar los cua
 */
 
 void Task_2(void){
+    uint32_t ticksFallingTEC1;  //No es necesario resetear estos valores
+    uint32_t ticksRisingTEC1;   //a cero dentro de la while true 
+                                //porque la medición de tiempo es relativa a otra tecla.
+
+    uint32_t ticksFallingTEC2;   //No es necesario resetear estos valores
+    uint32_t ticksRisingTEC2;    //a cero dentro de la while true 
+                                 //porque la medición de tiempo es relativa a otra tecla.
     int32_t t1=0;
     int32_t t2=0;
     uint32_t ton=0;
-    
-    //Configuración de la UART y msj de bienvenida
-    uartConfig(UART_USB, 115200 );
+
 	uartWriteString (UART_USB ,"DiC_OS: Examen de ISO-I-Jacobo Salvador.\n\r");
     
     while(1){
-        //semTake(&endTEC1); //con los semaforos binarios me permite asegurar que se termino
-        //semTake(&endTEC2); //el ciclo de pulsado y soltado en ambas teclas.
-                             //ahora me dedico a calcular la diferencia de tiempos y analizar 
-                            //los cuatro casos posibles.
-        
+              
 
         semTake(&endTEC1);
         queueGet(&msgTimeTECs,&timeEventRx1);
         semTake(&endTEC2);
         queueGet(&msgTimeTECs,&timeEventRx2);
 
+        /*
+        Extraigo dato de la cola y analizo que tecla fue la que llego
+        clasifico y calculo los tiempos
+        */
+
+        if (timeEventRx1.timeTECs.tecla==TIPO_TEC1){
+            ticksFallingTEC1=timeEventRx1.timeTECs.t1;
+            ticksRisingTEC1=timeEventRx1.timeTECs.t2;
+        }
+        else{
+            ticksFallingTEC2=timeEventRx1.timeTECs.t1;
+            ticksRisingTEC2=timeEventRx1.timeTECs.t2;
+        }
+
+
+         if (timeEventRx2.timeTECs.tecla==TIPO_TEC2){
+            ticksFallingTEC2=timeEventRx2.timeTECs.t1;
+            ticksRisingTEC2=timeEventRx2.timeTECs.t2;
+        }
+        else{
+            ticksFallingTEC1=timeEventRx2.timeTECs.t1;
+            ticksRisingTEC1=timeEventRx2.timeTECs.t2;
+        }
+
+        /*
+        El usuario presiono equivocadamente mas de una vez la misma tecla
+        */
+        if((ticksRisingTEC1<ticksFallingTEC2)||(ticksRisingTEC2<ticksFallingTEC1)||(ticksRisingTEC1==0 && ticksFallingTEC1==0) || (ticksRisingTEC2==0 && ticksFallingTEC2==0))
+            t1=t2=ton=0; //no hace nada no hay solapamiento
+
+        else{
         t1=(int32_t)ticksFallingTEC1-(int32_t)ticksFallingTEC2;
         t2=(int32_t)ticksRisingTEC1-(int32_t)ticksRisingTEC2;
         ton=(uint32_t)(abs(t1)+abs(t2));  //Sumo el valor absoluto de los dos tiempos
+        }
+        
         
 /*
 En los if, else if debajo verifico la condición de que LED corresponde encenderse y genero
 el delay, tiempo durante el cual la tarea esta en estado BLOCKEADA.
 El systick es el responsable de barrer entre todas las tarees y descontar el ticks_blocked--
 hasta que sea cero. Luego la tarea pasa al estado READY.
-*/     
-        if (t1<=0 && t2<=0){      //LED VERDE
+*/  
+
+        if (t1<0 && t2<0){      //LED VERDE
             gpioWrite(LED3,true);
             os_Delay(ton);
             gpioWrite(LED3,false);
             printMessages(VERDE,&t1,&t2);
         }
-        else if(t1<=0 && t2>0){  // LED ROJO
+        else if(t1<0 && t2>0){  // LED ROJO
             gpioWrite(LED1,true);
             os_Delay(ton);
             gpioWrite(LED1,false);
             uartWriteString (UART_USB ,"Led Rojo encendido\n\r");
             printMessages(ROJO,&t1,&t2);
         }
-        else if(t1>0 && t2<=0){  // LED AMARILLO
+        else if(t1>0 && t2<0){  // LED AMARILLO
             gpioWrite(LED2,true);
             os_Delay(ton);
             gpioWrite(LED2,false);
@@ -165,8 +187,11 @@ hasta que sea cero. Luego la tarea pasa al estado READY.
             printMessages(AZUL,&t1,&t2);
         }
         else
-            gpioWrite(LEDR,true);
+            nothingFunc();
+    //inicializo estas variables las uso para determinar errores
+    ticksRisingTEC1=ticksFallingTEC1=ticksRisingTEC2=ticksFallingTEC2=0;
     }
+
 }
 
 /*
@@ -252,4 +277,9 @@ char* itoa(int value, char* result, int base) {
       *ptr1++ = tmp_char;
    }
    return result;
+}
+
+
+void nothingFunc(void){
+    queueInit(&msgTimeTECs);
 }
