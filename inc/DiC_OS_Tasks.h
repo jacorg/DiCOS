@@ -44,7 +44,7 @@ char charTon[20];
 /*--------------------------------------Sección colas------------------------------------*/
 /*Declaración dato para cola entre tarea 1, 2 y 3*/
 
-queue_t msgTimeTECs;
+queue_t msgTimeTEC1,msgTimeTEC2;
 dataTypeQueue_t timeEventTx1,timeEventTx2,timeEventRx1,timeEventRx2;
 /*----------------------------------Prototipo de las tareas-------------------------------*/
 void Task_0(void);

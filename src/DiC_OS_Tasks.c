@@ -36,8 +36,8 @@ void Task_0(void){
             ticksRisingTEC1=getTicksFromOS();
             timeEventTx1.timeTECs.t2=ticksRisingTEC1;
             statusTEC1=FALLING;
-            queuePut(&msgTimeTECs,&timeEventTx1);
-            semGive(&endTEC1);   //Indico final de un ciclo de pulsación
+            queuePut(&msgTimeTEC1,&timeEventTx1);
+            //semGive(&endTEC1);   //Indico final de un ciclo de pulsación
             break;
         
         default:
@@ -76,8 +76,8 @@ void Task_1(void){
             ticksRisingTEC2=getTicksFromOS();
             timeEventTx2.timeTECs.t2=ticksRisingTEC2;
             statusTEC2=FALLING;
-            queuePut(&msgTimeTECs,&timeEventTx2);
-            semGive(&endTEC2);  //Indico final de un ciclo de pulsación
+            queuePut(&msgTimeTEC2,&timeEventTx2);
+            //semGive(&endTEC2);  //Indico final de un ciclo de pulsación
             break;
         
         default:
@@ -108,47 +108,48 @@ void Task_2(void){
     
     while(1){
               
+        
+        /*
+        -.SE DOCUMENTA QUE PRESIONES DESBALANCESADAS 10 VECES LA TECLA 1 Y LUEGO UNA
+        COMBINACION CORRECTA PRODUCE QUE ESA UNICA VISUALIZACION NO SE PRENDA, ES POR 
+        LA CARGA DE DATOS DE LA COLA
 
-        semTake(&endTEC1);
-        queueGet(&msgTimeTECs,&timeEventRx1);
-        semTake(&endTEC2);
-        queueGet(&msgTimeTECs,&timeEventRx2);
+        -.SE CORRIGE UN ERROR QUE ES CUANDO SE PRESIONAN SIN QUE LAS TECLAS SE SOLAPEN
+        FUNCIONA.
 
+        -.PARA EL SOLAPAMIENTO TODAS LAS COMBINACIONES SOLAPADAS FUNCIONANA BIEN
+        */
+        
         /*
         Extraigo dato de la cola y analizo que tecla fue la que llego
         clasifico y calculo los tiempos
         */
-
-        if (timeEventRx1.timeTECs.tecla==TIPO_TEC1){
-            ticksFallingTEC1=timeEventRx1.timeTECs.t1;
+       queueGet(&msgTimeTEC1,&timeEventRx1);
+       if (timeEventRx1.timeTECs.tecla==TIPO_TEC1){
+           ticksFallingTEC1=timeEventRx1.timeTECs.t1;
             ticksRisingTEC1=timeEventRx1.timeTECs.t2;
-        }
-        else{
-            ticksFallingTEC2=timeEventRx1.timeTECs.t1;
-            ticksRisingTEC2=timeEventRx1.timeTECs.t2;
-        }
-
-
-         if (timeEventRx2.timeTECs.tecla==TIPO_TEC2){
-            ticksFallingTEC2=timeEventRx2.timeTECs.t1;
-            ticksRisingTEC2=timeEventRx2.timeTECs.t2;
-        }
-        else{
-            ticksFallingTEC1=timeEventRx2.timeTECs.t1;
-            ticksRisingTEC1=timeEventRx2.timeTECs.t2;
-        }
+       }
+ 
+        queueGet(&msgTimeTEC2,&timeEventRx2);
+       if (timeEventRx2.timeTECs.tecla==TIPO_TEC2){
+           ticksFallingTEC2=timeEventRx2.timeTECs.t1;
+           ticksRisingTEC2=timeEventRx2.timeTECs.t2;
+       }
 
         /*
-        El usuario presiono equivocadamente mas de una vez la misma tecla
+        El usuario presiono equivocadamente y no hubo solapamiento d teclas asi que chequeo
         */
-        if((ticksRisingTEC1<ticksFallingTEC2)||(ticksRisingTEC2<ticksFallingTEC1)||(ticksRisingTEC1==0 && ticksFallingTEC1==0) || (ticksRisingTEC2==0 && ticksFallingTEC2==0))
-            t1=t2=ton=0; //no hace nada no hay solapamiento
+       if((ticksRisingTEC1<ticksFallingTEC2)||(ticksRisingTEC2<ticksFallingTEC1)){
+            t1=0;
+            t2=0;
+            ton=0; //no hace nada no hay solapamiento
+       }
 
-        else{
+       else{
         t1=(int32_t)ticksFallingTEC1-(int32_t)ticksFallingTEC2;
         t2=(int32_t)ticksRisingTEC1-(int32_t)ticksRisingTEC2;
         ton=(uint32_t)(abs(t1)+abs(t2));  //Sumo el valor absoluto de los dos tiempos
-        }
+       }
         
         
 /*
@@ -188,6 +189,8 @@ hasta que sea cero. Luego la tarea pasa al estado READY.
         }
         else
             nothingFunc();
+    
+    
     //inicializo estas variables las uso para determinar errores
     ticksRisingTEC1=ticksFallingTEC1=ticksRisingTEC2=ticksFallingTEC2=0;
     }
@@ -281,5 +284,6 @@ char* itoa(int value, char* result, int base) {
 
 
 void nothingFunc(void){
-    queueInit(&msgTimeTECs);
+    queueInit(&msgTimeTEC1);
+    queueInit(&msgTimeTEC2);
 }

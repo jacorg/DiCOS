@@ -198,6 +198,13 @@ Inicializo ticksOS del OS, despues de un RESET cada vez que ingresa en el systic
 */
 void initTicksFromOS(void);
 
+/*Imprementación de secciones críticas en la implementacion*/
+
+void enterCritical(void);
+
+void exitCritical(void);
+
+
 /* Definicion de funcion static*/
 //static void taskIdle(void);
 

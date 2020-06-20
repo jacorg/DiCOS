@@ -53,14 +53,19 @@ static void initHardware(void)  {
 
 
 int main(void)  {
-
+/*
+---------------------------------INICIALIZACION---------------------------------
+*/
 	initHardware();
 	setupTECsInterrupts(TEC1_i,TEC1_PORT,TEC1_BIT_EVAL,FALLING_AND_RISING_INT);
 	setupTECsInterrupts(TEC2_i,TEC2_PORT,TEC2_BIT_EVAL,FALLING_AND_RISING_INT);
 	addingInterrupts();
-	queueInit(&msgTimeTECs);
+	queueInit(&msgTimeTEC1);
+	queueInit(&msgTimeTEC2);
 	//Configuración de la UART y msj de bienvenida
     uartConfig(UART_USB, 115200 );
+
+
     //Instancio la tarea con su correspondiente prioridad
 	/*La tarea 1 se encarga de manejar la tecla TEC1 por medio de la interrupción*/
 	createTask(Task_0, &taskStructure_0, PRIORITY_0);
@@ -83,8 +88,8 @@ int main(void)  {
 	hago el calculo diferencia de tiempo, evaluó los casos y represento por UART, 
 	según los requerimientos del parcial.
 	*/
-	semInit(&endTEC1);
-	semInit(&endTEC2);
+	//semInit(&endTEC1); //SE ELIMINAN MENOS SEMAFOROS, TENGO LAS COLAS 
+	//semInit(&endTEC2);
 
 /*Despues de haber creado todas las tareas con asignación de sus prioridades y configurado las
 variables del OS corro la función initHardware. Si el sistema tiene menos de 8 tareas entonces la 

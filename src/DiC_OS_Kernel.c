@@ -39,6 +39,14 @@ static taskStructure_t taskIdleStructure;
 
 static void triggerPendSV(void);
 
+inline void enterCritical(void)  {
+	__disable_irq();
+}
+
+inline void exitCritical(void)  {
+	__enable_irq();
+}
+
 void __attribute__((weak)) tickHook(void)  {
 	__asm volatile( "nop" );
 }
